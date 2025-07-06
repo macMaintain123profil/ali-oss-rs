@@ -18,6 +18,7 @@ pub mod symlink;
 pub mod symlink_common;
 pub mod tagging;
 pub mod tagging_common;
+pub mod progress_stream;
 
 #[cfg(feature = "blocking")]
 pub mod blocking;
@@ -45,6 +46,7 @@ use tokio::io::{AsyncReadExt, AsyncSeekExt};
 use tokio_util::codec::{BytesCodec, FramedRead};
 use url::Url;
 use util::{get_region_from_endpoint, hmac_sha256};
+use progress_stream::ProgressStream;
 
 pub type Result<T> = std::result::Result<T, crate::error::Error>;
 
@@ -353,6 +355,12 @@ impl Client {
                     let limited_reader = file.take(rng.end - rng.start);
                     // Create a stream from the limited reader
                     let stream = FramedRead::new(limited_reader, BytesCodec::new()).map(|r| r.map(|bytes| bytes.freeze()));
+                    req_builder.body(Body::wrap_stream(stream))
+                } else if let Some(callback) = oss_request.progress_callback {
+                    let meta = tokio::fs::metadata(&path).await?;
+                    let total_size = meta.len(); // 文件总字节数
+                    let file = tokio::fs::File::open(path).await?;
+                    let stream = ProgressStream::new(file, total_size, callback.clone());
                     req_builder.body(Body::wrap_stream(stream))
                 } else {
                     req_builder.body(tokio::fs::File::open(path).await?)

@@ -5,7 +5,7 @@ use std::{
     path::PathBuf,
 };
 
-use crate::{common, util};
+use crate::{common, progress_stream::ProgressCallback, util};
 
 /// Request body
 #[derive(Debug, Default, Clone)]
@@ -67,6 +67,7 @@ pub struct OssRequest {
     pub query: HashMap<String, String>,
 
     pub body: RequestBody,
+    pub progress_callback: Option<ProgressCallback>,
 }
 
 impl Default for OssRequest {
@@ -95,6 +96,7 @@ impl OssRequest {
             additional_headers: HashSet::new(),
             query: HashMap::new(),
             body: RequestBody::Empty,
+            progress_callback: None,
         }
     }
 
